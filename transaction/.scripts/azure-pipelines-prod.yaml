@@ -1,0 +1,161 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+trigger:
+  branches:
+    include:
+    - main
+  paths:
+    include:
+    - global_tx_history
+
+pr: none
+
+pool: tsg-ny-ezpass-ba-pool-linux-prod
+
+variables:
+  service_name: tpms-global-tx-history
+  folder_name: global_tx_history
+  old_service_name: tpms-global-transaction-history-azure-service
+  azure_service_connection_name: tsg-ny-ezpass-service-connection-prod-01
+  azure_service_connection_name_dev: tsg-ny-ezpass-service-connection-dev-01
+  replicas: 1
+  ai_sampling_percentage: 10
+
+stages: 
+- stage: 'BUILD'
+  variables:
+    - group: 'NY EZPASS PROD'
+    - group: 'NY EZPASS SHARED'
+  jobs:
+    - job: Build
+      steps: 
+      - template: ../../.shared/templates/azure-pipelines-acr-build-push-template.yaml
+        parameters:
+          azure_service_connection_name: $(azure_service_connection_name)
+
+- stage: 'NY_EZPASS_PROD'
+  dependsOn: BUILD
+  pool: tsg-ny-ezpass-ba-pool-linux-prod
+  variables:
+    - group: 'NY EZPASS PROD'
+    - name: install-k8s-tools
+      value: false
+    - name: log_level
+      value: INFO
+    - name: ai_sampling_percentage
+      value: 100  
+  jobs:
+    - deployment:
+      environment: NY EZPASS PROD
+      strategy:
+        runOnce:
+          deploy:
+            steps: 
+            - template: ../../.shared/templates/azure-pipelines-k8s-deploy-template.yaml
+              parameters:
+                  azure_service_connection_name: $(azure_service_connection_name)
+- stage: 'NY_EZPASS_PROD_DR'
+  dependsOn: BUILD
+  pool: tsg-ny-ezpass-ba-pool-linux-prod-dr
+  variables:
+    - group: 'NY EZPASS PROD DR'
+    - name: install-k8s-tools
+      value: false
+    - name: log_level
+      value: INFO
+  jobs:
+    - deployment:
+      variables: 
+        acr_login_server_source: $[ stageDependencies.BUILD.Build.outputs['ProduceVariableTask.acr_login_server_source'] ]
+      environment: NY EZPASS PROD DR
+      strategy:
+        runOnce:
+          deploy:
+            steps: 
+            - template: ../../.shared/templates/azure-pipelines-acr-import-template.yaml
+              parameters:
+                azure_service_connection_name: $(azure_service_connection_name)
+            - template: ../../.shared/templates/azure-pipelines-k8s-deploy-template.yaml
+              parameters:
+                  azure_service_connection_name: $(azure_service_connection_name)
+# - stage: 'NY_EZPASS_QA'
+#   dependsOn: BUILD
+#   pool: tsg-ny-ezpass-ba-pool-aks-dev
+#   variables:
+#     - group: 'NY EZPASS QA'
+#     - name: install-k8s-tools
+#       value: false
+#     - name: log_level
+#       value: INFO
+#   jobs:
+#     - deployment:
+#       variables: 
+#         acr_login_server_source: $[ stageDependencies.BUILD.Build.outputs['ProduceVariableTask.acr_login_server_source'] ]
+#       environment: NY EZPASS QA
+#       strategy:
+#         runOnce:
+#           deploy:
+#             steps: 
+#             - template: ../../.shared/templates/azure-pipelines-acr-import-template.yaml
+#               parameters:
+#                 azure_service_connection_name: $(azure_service_connection_name_dev)
+#             - template: ../../.shared/templates/azure-pipelines-k8s-deploy-template.yaml
+#               parameters:
+#                 azure_service_connection_name: $(azure_service_connection_name_dev)
+
+# - stage: 'NY_EZPASS_STG'
+#   dependsOn: BUILD
+#   pool: tsg-ny-ezpass-ba-pool-linux-stg
+#   variables:
+#     - group: 'NY EZPASS STG'
+#     - name: install-k8s-tools
+#       value: false
+#     - name: log_level
+#       value: INFO
+#     - name: ai_sampling_percentage
+#       value: 100
+#   jobs:
+#     - deployment:
+#       variables: 
+#         acr_login_server_source: $[ stageDependencies.BUILD.Build.outputs['ProduceVariableTask.acr_login_server_source'] ]
+#       environment: NY EZPASS STG
+#       strategy:
+#         runOnce:
+#           deploy:
+#             steps: 
+#             - template: ../../.shared/templates/azure-pipelines-acr-import-template.yaml
+#               parameters:
+#                 azure_service_connection_name: $(azure_service_connection_name_dev)
+#             - template: ../../.shared/templates/azure-pipelines-k8s-deploy-template.yaml
+#               parameters:
+#                 azure_service_connection_name: $(azure_service_connection_name_dev)
+
+# - stage: 'NY_EZPASS_UAT2'
+#   dependsOn: BUILD
+#   pool: tsg-ny-ezpass-ba-pool-linux-uat2
+#   variables:
+#     - group: 'NY EZPASS UAT2'
+#     - name: install-k8s-tools
+#       value: false
+#     - name: log_level
+#       value: INFO
+#     - name: ai_sampling_percentage
+#       value: 100
+#   jobs:
+#     - deployment:
+#       variables: 
+#         acr_login_server_source: $[ stageDependencies.BUILD.Build.outputs['ProduceVariableTask.acr_login_server_source'] ]
+#       environment: NY EZPASS UAT2
+#       strategy:
+#         runOnce:
+#           deploy:
+#             steps: 
+#             - template: ../../.shared/templates/azure-pipelines-acr-import-template.yaml
+#               parameters:
+#                 azure_service_connection_name: $(azure_service_connection_name_dev)
+#             - template: ../../.shared/templates/azure-pipelines-k8s-deploy-template.yaml
+#               parameters:
+#                 azure_service_connection_name: $(azure_service_connection_name_dev)
