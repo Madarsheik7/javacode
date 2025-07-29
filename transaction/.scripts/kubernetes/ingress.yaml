@@ -1,0 +1,40 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: #{service_name}#-ingress
+  namespace: ny-ezpass-#{environment}#
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "1200"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "1200"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "1200"
+spec:
+  ingressClassName: nginx-internal
+  rules:
+  - host: ingress-#{environment}#-nycsc.services.conduent.com
+    http:
+      paths:
+      - path: /api/history-transaction
+        pathType: Prefix
+        backend:
+          service:
+            name: #{old_service_name}#
+            port:
+              number: 80
+      - path: /api/global-transaction-history-healthCheck
+        pathType: Prefix
+        backend:
+          service:
+            name: #{old_service_name}#
+            port:
+              number: 80
+      - path: /api/get_transaction_overview
+        pathType: Prefix
+        backend:
+          service:
+            name: #{old_service_name}#
+            port:
+              number: 80
+  tls:
+  - hosts:
+    - ingress-#{environment}#-nycsc.services.conduent.com
+    secretName: tls-ssl-certificate-01
