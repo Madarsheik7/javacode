@@ -1,0 +1,36 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+# specific path
+pr:
+  branches:
+    include:
+    - main
+    - develop
+    - releases/*
+  paths:
+    include:
+    - global_tx_history
+
+trigger: none
+
+pool: tsg-ny-ezpass-ba-pool-aks-dev
+
+variables:
+  service_name: tpms-global-tx-history
+  folder_name: global_tx_history
+  azure_service_connection_name: tsg-ny-ezpass-service-connection-dev-01
+
+stages:
+  - stage: 'Build'
+    variables:
+    - group: 'NY EZPASS DEV'
+    - group: 'NY EZPASS SHARED'
+    jobs: 
+    - job: Build
+      steps: 
+      - template: ../../.shared/templates/azure-pipelines-acr-build-nopush-template.yaml
+        parameters:
+          azure_service_connection_name: $(azure_service_connection_name)

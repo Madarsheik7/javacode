@@ -1,0 +1,46 @@
+{
+    "connectionString": "#{appinsights_connstring}#",
+    "role": {
+        "name": "global-tx-history"
+    },
+    "sampling": {
+        "percentage": 100
+    },
+    "jmxMetrics": [],
+    "customDimensions": {},
+    "instrumentation": {
+        "logging": {
+            "level": "INFO"
+        },
+        "micrometer": {
+            "enabled": true
+        }
+    },
+    "proxy": {},
+    "preview": {
+        "sampling": {
+            "overrides": [
+              {
+                "telemetryType": "request",
+                "percentage": 0,
+                "attributes": [
+                  {
+                    "key": "http.url",
+                    "value": ".*/actuator.*",
+                    "matchType": "regexp"
+                  }
+                ]
+              }
+            ]
+          }
+    },
+    "selfDiagnostics": {
+        "destination": "file",
+        "level": "#{log_level}#",
+        "file": {
+            "path": "#{nfs_mount_path}#TOLLING/AZURE/TPMS/LOGS/GLOBAL_TRANSACTION_HISTORY/applicationinsights.log",
+            "maxSizeMb": 5,
+            "maxHistory": 1
+        }
+    }
+}
